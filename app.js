@@ -99,16 +99,7 @@ app.get('/profile', (req,res) =>{
     
 })
 app.get('/login',(req, res) =>{
-    res.send(`
-    <h1>Login</h1>
-    <form method='post' action='/login'>
-        <input type='email' name='email' placeholder='Email' required/>
-        <input type='password' name='password' placeholder='Password' required/>
-        <input type='submit' />
-    </form>
-    <a href='/register'>Register</a>
-    `)
-
+    res.render('login')
 });
 app.get('/register',(req, res) =>{
     res.send(`
