@@ -1,4 +1,6 @@
 var db = require('./db');
+var path = require('path');
+var flash = require('express-flash-messages')
 const express = require('express');
 const session = require('express-session');
 const bodyParser= require('body-parser')
@@ -21,8 +23,9 @@ const users = [
 ]
 
 const app = express()
-
+app.use(flash())
 app.set('view engine', 'pug');
+app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(__dirname + '/public'));
 
 app.use(bodyParser.urlencoded({
@@ -63,7 +66,6 @@ app.use((req,res,next) => {
     next()
 })
 
-
 //ROUTES
 
 app.get('/', (req, res) =>{
@@ -95,23 +97,24 @@ app.get('/home', redirectLogin, (req, res) =>{
     </ul>
     `)
 });
-app.get('/profile', (req,res) =>{
-    
-})
+app.get('/profile/:user_id', (req,res) =>{
+    var user_id = req.params.user_id;
+
+    db.query('SELECT * FROM users WHERE uid = ?', [user_id], function(error, results, fields) {
+
+        console.log(results);
+
+        res.render('user/profile',{
+            email: results[0].email,
+            fname: results[0].fname
+        })
+    });
+});
 app.get('/login',(req, res) =>{
-    res.render('login')
+    res.render('user/login')
 });
 app.get('/register',(req, res) =>{
-    res.send(`
-    <h1>Register</h1>
-    <form method='post' action='/register'>
-        <input type='text' name='name' placeholder='Name' required/>
-        <input type='email' name='email' placeholder='Email' required/>
-        <input type='password' name='password' placeholder='Password' required/>
-        <input type='submit'/>
-    </form>
-    <a href='/login'>Login</a>
-    `)
+    res.render('user/register')
 
 });
 app.post('/login', (req, res) =>{
@@ -129,7 +132,8 @@ app.post('/login', (req, res) =>{
                 req.session.lname = results[0].lname
                 res.redirect('/home');
             }else{
-                res.send('Incorrect Username and/or Password!');
+                req.flash('message','Incorrect Username and/or Password!');
+                res.render('user/login')
             }
             res.end();
         });
@@ -139,28 +143,23 @@ app.post('/login', (req, res) =>{
 	}
 });
 
-app.post('/register', (req, res) =>{
-    const { name,email,password } = req.body
+app.post('/register', async (req, res) =>{
+  const { fname,lname,email,password } = req.body
 
-    if (name && email && password){
-        const exists = users.some(
-            user => user.email === email
-        )
-        if(!exists){
-            const user ={
-                id: users.length + 1,
-                name,
-                email,
-                password
-            }
-            users.push(user)
-            req.session.userId = user.id
-
-            return res.redirect('/home')
+    try{
+        if(fname && lname && email && password){
+            db.query('INSERT INTO users(fname,lname,email,password) VALUES(?, ?, ?, ?)', [fname, lname, email, password], function(error, results, fields) {
+                if (error) throw error;
+                console.log("successfully inserted")
+            });
+            res.redirect('/home');
+        }else{
+            res.send('Incorrect or empty fields')
         }
+        res.end();
+    }catch{
+        console.log('query error')
     }
-    return res.redirect('/register') //TODO flash an error that user exists or email to short
-
 });
 app.post('/logout', redirectLogin, (req, res) =>{
 
